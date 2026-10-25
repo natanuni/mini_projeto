@@ -61,3 +61,44 @@ print("Total de pedidos afetados por problemas numéricos: ", total_pedidos_afet
 registros_com_problema = df[mascara_problema_numerico]
 print("\nExemplo de registro inconsistentes:")
 print(registros_com_problema[['quantidade', 'preco_unitario', 'qtd_invalida', 'preco_invalido']].head())
+
+# padronizar canal
+canais_validos = {"mercado": "Mercado",
+                  "loja física": "Loja física",
+                  "web": "Web",
+                  "site": "Web"}
+
+canal_limpo = df['canal_venda'].astype(str).str.strip().str.lower()
+
+df['canal_venda'] = canal_limpo.map(canais_validos).fillna(df['canal_venda'])
+
+print("\nPadronizar Canal")
+print(df['canal_venda'].value_counts(dropna=False))
+
+# trata caso a data_entrega venha como NaN ou string vazia/com espaço
+sem_entrega = df['data_entrega'].isna() | (df['data_entrega'].astype(str).str.strip() == '')
+
+# criando 2 grupos de investigação
+grupo_1 = sem_entrega & (df['status_pedido'].astype(str).str.strip().str.lower() == 'cancelado')
+
+grupo_2 = sem_entrega & (df['status_pedido'].astype(str).str.strip().str.lower() != 'cancelado')
+
+# filtra os DataFrames e realizar as contagens
+df_grupo_1 = df[grupo_1]
+df_grupo_2 = df[grupo_2]
+
+total_sem_entrega = sem_entrega.sum()
+qtd_grupo_1 = len(df_grupo_1)
+qtd_grupo_2 = len(df_grupo_2)
+
+print("\nTotal de pedidos sem data de entrega: ", total_sem_entrega)
+print("Grupo 1 (Sem entrega + Status Cancelado): ", qtd_grupo_1)
+print("Grupo 2 (Sem entrega + Status Diferente de Cancelado): ", qtd_grupo_2)
+
+print("\n hipótese ")
+if qtd_grupo_2 == 0:
+    print("hipótese é verdadeira. Todos os pedidos sem data de entrega estão cancelados.")
+else:
+    print("hipótese é falsa! Existem pedidos sem data de entrega com outros status.")
+    print("\nExemplo de até 3 registros de Grupo 2 (contraexemplos):")
+    print(df_grupo_2[['status_pedido', 'data_venda', 'data_entrega', 'canal_venda']].head(5))
