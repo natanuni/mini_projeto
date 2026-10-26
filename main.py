@@ -95,10 +95,66 @@ print("\nTotal de pedidos sem data de entrega: ", total_sem_entrega)
 print("Grupo 1 (Sem entrega + Status Cancelado): ", qtd_grupo_1)
 print("Grupo 2 (Sem entrega + Status Diferente de Cancelado): ", qtd_grupo_2)
 
-print("\n hipótese ")
+print("\nhipótese ")
 if qtd_grupo_2 == 0:
     print("hipótese é verdadeira. Todos os pedidos sem data de entrega estão cancelados.")
 else:
     print("hipótese é falsa! Existem pedidos sem data de entrega com outros status.")
-    print("\nExemplo de até 3 registros de Grupo 2 (contraexemplos):")
+    print("\nExemplo de até 5 registros de Grupo 2 (contraexemplos):")
     print(df_grupo_2[['status_pedido', 'data_venda', 'data_entrega', 'canal_venda']].head(5))
+
+# conversão da data de venda e indentificação de inválidas
+df['data_venda_dt'] = pd.to_datetime(df['data_venda'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+
+data_invalida = df['data_venda_dt'].isna()
+total_data_invalidas = data_invalida.sum()
+
+print(f"Total de registros com data de venda inválida/vazia: {total_data_invalidas}\n")
+
+# formatação brasileiro (DD/MM/AAAA)
+df['data_venda_br'] = df['data_venda_dt'].dt.strftime('%d/%m/%Y')
+
+# Criando a coluna do período (Ano-Mês) em formato YYYY-MM para agrupamento
+df['ano_mes'] = df['data_venda_dt'].dt.to_period('M')
+
+# Considerando apenas os canais de venda reconhecidos/padronizados
+canais_validos = ['Mercado', 'Loja física', 'Web']
+df_canais_validos = df[df['canal_venda'].isin(canais_validos)]
+
+contagem_canal = df_canais_validos['canal_venda'].value_counts()
+excluidos_canal = len(df) - len(df_canais_validos)
+
+print(contagem_canal)
+print(f"Registros excluídos (canais não reconhecidos/nulos): {excluidos_canal}\n")
+
+# Contagem de Pedidos por Ano-Mês
+# datas de venda válidas
+df_datas_validas = df[~data_invalida]
+
+# Agrupamento por Ano-Mês
+contagem_ano_mes = df_datas_validas.groupby('ano_mes').size()
+
+print(contagem_ano_mes)
+print(f"Registros excluídos (datas inválidas): {total_data_invalidas}\n")
+
+print("==================================================")
+print("       RELATÓRIO DE STATUS E QUALIDADE DOS DADOS  ")
+print("==================================================")
+print(f"Total de linhas lidas no CSV:                   {len(df)}")
+print(f"Categorias vazias preenchidas ('sem categoria'): {total_vazios}")
+print(f"Pedidos com problemas numéricos (Qtd / Preço):  {total_pedidos_afetados}")
+print(f"Registros com data de venda inválida/vazia:     {total_data_invalidas}")
+print(f"Total de pedidos com status 'Cancelado':         {(df['status_pedido'].str.lower() == 'cancelado').sum()}")
+print("--------------------------------------------------")
+print("  INVESTIGAÇÃO DA HIPÓTESE (PEDIDOS SEM DATA DE ENTREGA)")
+print(f"  - Grupo 1 (Sem entrega + Cancelados):            {qtd_grupo_1}")
+print(f"  - Grupo 2 (Sem entrega + Outros Status):         {qtd_grupo_2}")
+print("==================================================\n")
+
+print("--- CONTAGEM DE PEDIDOS POR CANAL DE VENDA ---")
+print(contagem_canal)
+print(f"(Excluídos da contagem por canal inválido/nulo: {excluidos_canal})\n")
+
+print("--- CONTAGEM DE PEDIDOS POR ANO-MÊS ---")
+print(contagem_ano_mes)
+print(f"(Excluídos da contagem por data de venda inválida: {total_data_invalidas})\n")
